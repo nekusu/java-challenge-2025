@@ -1,0 +1,60 @@
+services:
+  accreditations-service:
+    container_name: accreditations-service
+    build:
+      context: ./accreditations-service
+      dockerfile: Dockerfile
+    ports:
+      - "8091:8091"
+    env_file:
+      - ./accreditations-service/.env
+    depends_on:
+      - eureka-server
+      - accreditations-postgres
+
+  accreditations-postgres:
+    image: chainguard/postgres:latest
+    container_name: accreditations-postgres
+    env_file:
+      - ./accreditations-service/.env
+    ports:
+      - "5433:5432"
+
+  sale-points-service:
+    container_name: sale-points-service
+    build:
+      context: ./sale-points-service
+      dockerfile: Dockerfile
+    ports:
+      - "8090:8090"
+    env_file:
+      - ./sale-points-service/.env
+    depends_on:
+      - eureka-server
+      - sale-points-postgres
+
+  sale-points-postgres:
+    image: chainguard/postgres:latest
+    container_name: sale-points-postgres
+    env_file:
+      - ./sale-points-service/.env
+    ports:
+      - "5432:5432"
+
+  eureka-server:
+    container_name: eureka-server
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
+    ports:
+      - "8761:8761"
+
+  api-gateway:
+    container_name: api-gateway
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - eureka-server

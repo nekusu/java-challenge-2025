@@ -1,0 +1,16 @@
+[submodule "sale-points-service"]
+	path = sale-points-service
+	url = https://github.com/nekusu/java-challenge-2025-sale-points-service
+	branch = main
+[submodule "api-gateway"]
+	path = api-gateway
+	url = https://github.com/nekusu/java-challenge-2025-api-gateway
+	branch = main
+[submodule "eureka-server"]
+	path = eureka-server
+	url = https://github.com/nekusu/java-challenge-2025-eureka-server
+	branch = main
+[submodule "accreditations-service"]
+	path = accreditations-service
+	url = https://github.com/nekusu/java-challenge-2025-accreditations-service
+	branch = main
