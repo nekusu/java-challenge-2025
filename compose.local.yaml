@@ -1,0 +1,25 @@
+name: java-challenge-2025-local
+services:
+  users-postgres:
+    image: chainguard/postgres:latest
+    container_name: users-postgres-local
+    env_file:
+      - ./users-service/.env
+    ports:
+      - "5434:5432"
+
+  accreditations-postgres:
+    image: chainguard/postgres:latest
+    container_name: accreditations-postgres-local
+    env_file:
+      - ./accreditations-service/.env
+    ports:
+      - "5433:5432"
+
+  sale-points-postgres:
+    image: chainguard/postgres:latest
+    container_name: sale-points-postgres-local
+    env_file:
+      - ./sale-points-service/.env
+    ports:
+      - "5432:5432"
