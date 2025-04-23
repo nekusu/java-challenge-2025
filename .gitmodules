@@ -14,3 +14,7 @@
 	path = accreditations-service
 	url = https://github.com/nekusu/java-challenge-2025-accreditations-service
 	branch = main
+[submodule "users-service"]
+	path = users-service
+	url = https://github.com/nekusu/java-challenge-2025-users-service
+	branch = main
