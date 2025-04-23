@@ -1,4 +1,26 @@
 services:
+  users-service:
+    container_name: users-service
+    build:
+      context: ./users-service
+      dockerfile: Dockerfile
+    ports:
+      - "8092:8092"
+    env_file:
+      - .env
+      - ./users-service/.env
+    depends_on:
+      - eureka-server
+      - users-postgres
+
+  users-postgres:
+    image: chainguard/postgres:latest
+    container_name: users-postgres
+    env_file:
+      - ./users-service/.env
+    ports:
+      - "5434:5432"
+
   accreditations-service:
     container_name: accreditations-service
     build:
@@ -7,6 +29,7 @@ services:
     ports:
       - "8091:8091"
     env_file:
+      - .env
       - ./accreditations-service/.env
     depends_on:
       - eureka-server
@@ -56,5 +79,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     depends_on:
       - eureka-server
