@@ -6,9 +6,12 @@ A microservices-based Java project for managing sale points and accreditations, 
 
 - **Java 21**
 - **Maven**
-- **Spring Boot** (Data JPA, Web, etc.)
+- **Spring Boot** (Data JPA, Web, Validation, Cache, DevTools)
 - **Spring Cloud Netflix Eureka**
 - **Spring Cloud Gateway**
+- **Spring Security** (with Java JWT)
+- **JUnit**
+- **Mockito**
 - **Lombok**
 - **PostgreSQL**
 - **Podman & Podman Compose**
@@ -19,48 +22,78 @@ This project follows a microservices architecture, with the following main compo
 
 - **Eureka Server**: Service registry for microservices.
 - **API Gateway**: Entry point for all client requests, routing to appropriate services.
-- **Sale Points Service**: Manages sale points data and logic.
+- **Users Service**: Manages user authentication and authorization, including JWT token generation and validation.
 - **Accreditations Service**: Handles accreditations data and logic.
+- **Sale Points Service**: Manages sale points data and logic.
 - **PostgreSQL Databases**: Each service has its own isolated database.
 
 ```mermaid
----
-config:
-    layout: "elk"
----
 flowchart LR
  subgraph EurekaServer["Eureka Server"]
-        ApiGateway["API Gateway"]
-        SalePointsService["Sale Points Service"]
+        ApiGateway{{"API Gateway"}}
+        UsersService["Users Service"]
         AccreditationsService["Accreditations Service"]
+        SalePointsService["Sale Points Service"]
   end
- subgraph SalePointsService["Sale Points Service"]
-        SalePointsDatabase["Database"]
-        SalePointsController["Controller"]
+  subgraph UsersService["Users Service"]
+        direction TB
+        AuthController("Auth Controller")
+        UserController("User Controller")
+        UsersDatabase[("Database")]
   end
  subgraph AccreditationsService["Accreditations Service"]
-        AccreditationsDatabase["Database"]
-        AccreditationsController["Controller"]
+        direction LR
+        AccreditationsController("Controller")
+        AccreditationsDatabase[("Database")]
   end
-    Client --> ApiGateway
-    SalePointsController --> SalePointsDatabase
+ subgraph SalePointsService["Sale Points Service"]
+        direction TB
+        SalePointController("Sale Point Controller")
+        PathController("Path Controller")
+        SalePointsDatabase[("Database")]
+  end
+    Client((Client)) --> ApiGateway
+    UserController --> UsersDatabase
+    AuthController --> UsersDatabase
     AccreditationsController --> AccreditationsDatabase
-    ApiGateway --> SalePointsService & AccreditationsService
-
+    SalePointController --> SalePointsDatabase
+    PathController --> SalePointsDatabase
+    ApiGateway --> UsersService & AccreditationsService & SalePointsService
 ```
 
 ## Database Relationships
 
 Each service has its own PostgreSQL database. The main entities and relationships are as follows:
 
+- Users Service:
+  - `users`: Represents users with unique usernames and emails.
+- Accreditations Service:
+  - `accreditations`: Represents accreditations linked to users and sale points, including amounts and receipt dates.
 - Sale Points Service:
   - `sale_points`: Represents sale points with unique names.
   - `paths`: Represents direct paths between sale points with associated costs.
-- Accreditations Service:
-  - `accreditations`: Represents accreditations linked to sale points, including amounts and receipt dates.
 
 ```mermaid
 erDiagram
+    direction LR
+
+    users {
+        Long id PK
+        String username UK
+        String email UK
+        String password
+        String role
+    }
+    
+    accreditations {
+        Long id PK
+        Long user_id FK
+        Long sale_point_id FK
+        String sale_point_name
+        Double amount
+        LocalDate receipt_date
+    }
+
     sale_points {
         Long id PK
         String name UK
@@ -69,20 +102,13 @@ erDiagram
     paths {
         Long id_a "composite PK, FK"
         Long id_b "composite PK, FK"
-        Long cost
-    }
-    
-    accreditations {
-        Long id PK
-        Long sale_point_id FK
-        String sale_point_name
-        Double amount
-        LocalDate receipt_date
+        Double cost
     }
 
+    users ||--o{ accreditations : "id to user_id"
+    sale_points ||--o{ accreditations : "id to sale_point_id"
     sale_points ||--o{ paths : "id to id_a"
     sale_points ||--o{ paths : "id to id_b"
-    sale_points ||--o{ accreditations : "id to sale_point_id"
 
 ```
 
@@ -96,7 +122,7 @@ flowchart TD
     Start --> GetStartEndPoints["Retrieve start and end sale points"]
     GetStartEndPoints --> Initialize["Initialize data structures"]
     Initialize --> CheckQueue{"Is the queue empty?"}
-    CheckQueue -->|Yes| ThrowException["Throw PathNotFoundException"]
+    CheckQueue -->|Yes| ThrowException(["Throw PathNotFoundException"])
     CheckQueue -->|No| ProcessNode["Process current node"]
     ProcessNode --> MarkVisited["Mark node as visited"]
     MarkVisited --> IsDestination{"Is current node the destination?"}
@@ -129,14 +155,32 @@ cd java-challenge-2025
 
 ### 2. Create Environment Files
 
-For both sale-points-service and accreditations-service, create a `.env` file using the provided `.env.example` as a template:
+You need to create environment files for each service and for the root of the project:
+
+- For `users-service`, `accreditations-service`, and `sale-points-service`, create a `.env` file from the provided `.env.example` template:
+
+    ```sh
+    cp users-service/.env.example users-service/.env
+    cp accreditations-service/.env.example accreditations-service/.env
+    cp sale-points-service/.env.example sale-points-service/.env
+    ```
+
+- At the root of the project, also create a `.env` file from the root `.env.example`:
+
+    ```sh
+    cp .env.example .env
+    ```
+
+Edit the `.env` files as needed for your environment (e.g., database credentials).
+
+**Important:**  
+In the root `.env` file, set the `JWT_SECRET` variable to a secure, random base64-encoded string that is at least 256 bits (32 bytes) long. For example, you can generate one using:
 
 ```sh
-cp sale-points-service/.env.example sale-points-service/.env
-cp accreditations-service/.env.example accreditations-service/.env
+openssl rand -base64 32
 ```
 
-Edit the `.env` files as needed for your environment (database credentials).
+Replace the value of `JWT_SECRET` in `.env` with the generated string.
 
 ### 3. Build and Run with Docker Compose
 
@@ -152,8 +196,10 @@ podman compose up
 This will start all services:
 - Eureka Server ([`http://localhost:8761`](http://localhost:8761))
 - API Gateway ([`http://localhost:8080`](http://localhost:8080))
-- Sale Points Service ([`http://localhost:8090`](http://localhost:8090))
+- Users Service ([`http://localhost:8092`](http://localhost:8092))
 - Accreditations Service ([`http://localhost:8091`](http://localhost:8091))
+- Sale Points Service ([`http://localhost:8090`](http://localhost:8090))
 - PostgreSQL databases:
-  - Sale Points Database ([`http://localhost:5432`](http://localhost:5432))
+  - Users Database ([`http://localhost:5434`](http://localhost:5434))
   - Accreditations Database ([`http://localhost:5433`](http://localhost:5433))
+  - Sale Points Database ([`http://localhost:5432`](http://localhost:5432))
