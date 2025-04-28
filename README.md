@@ -10,6 +10,7 @@ A microservices-based Java project for managing sale points and accreditations, 
 - **Spring Cloud Netflix Eureka**
 - **Spring Cloud Gateway**
 - **Spring Security** (with Java JWT)
+- **SpringDoc OpenAPI** (with Swagger UI)
 - **JUnit**
 - **Mockito**
 - **Lombok**
@@ -203,3 +204,45 @@ This will start all services:
   - Users Database ([`http://localhost:5434`](http://localhost:5434))
   - Accreditations Database ([`http://localhost:5433`](http://localhost:5433))
   - Sale Points Database ([`http://localhost:5432`](http://localhost:5432))
+
+## Working with the API
+
+You can try the endpoints of each service using their Swagger UI documentation or by importing their OpenAPI definitions into API tools like [Postman](https://www.postman.com/) or [Hoppscotch](https://hoppscotch.com/).
+
+### Swagger UI
+
+Once all services are running, you can access the main Swagger UI at:
+
+- [`http://localhost:8080/swagger-ui.html`](http://localhost:8080/swagger-ui.html)
+
+From this page, you can navigate to the Swagger documentation for each service (Users, Accreditations, and Sale Points) through the provided dropdown or links. This allows you to explore and try out all available endpoints directly from your browser.
+
+### Importing OpenAPI Specs
+
+Each service exposes its OpenAPI specification at the following URLs:
+
+- **Users Service:** [`http://localhost:8080/users/v3/api-docs`](http://localhost:8080/users/v3/api-docs)
+- **Accreditations Service:** [`http://localhost:8080/accreditations/v3/api-docs`](http://localhost:8080/accreditations/v3/api-docs)
+- **Sale Points Service:** [`http://localhost:8080/sale-points/v3/api-docs`](http://localhost:8080/sale-points/v3/api-docs)
+
+To import into **Hoppscotch**:
+
+1. Go to [Hoppscotch.io](https://hoppscotch.io/).
+3. In the Collections section, click **Import** > **Import from OpenAPI** > **Import from URL**.
+4. Paste the OpenAPI URL and import.
+
+### Authentication
+
+Most endpoints require authentication using a JWT Bearer token.
+
+- You can obtain a token by registering and logging in via the `/api/auth/register` and `/api/auth/login` endpoints (see Users Service).
+- Use the token in the `Authorization` header as `Bearer <token>` when making requests.
+
+**Default Admin User:**  
+A default admin user is created automatically when the Users Service starts:
+
+- **Username:** `admin`
+- **Email:** `admin@email.com`
+- **Password:** `admin`
+
+You can use these credentials to log in and obtain an admin JWT token for testing protected endpoints.
