@@ -23,3 +23,12 @@ services:
       - ./sale-points-service/.env
     ports:
       - "5432:5432"
+
+  rabbitmq:
+    image: rabbitmq:management-alpine
+    container_name: rabbitmq-local
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    env_file:
+      - .env

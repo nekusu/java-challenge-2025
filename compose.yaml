@@ -1,4 +1,17 @@
 services:
+  email-service:
+    container_name: email-service
+    build:
+      context: ./email-service
+      dockerfile: Dockerfile
+    ports:
+      - "8093:8093"
+    env_file:
+      - .env
+    depends_on:
+      - eureka-server
+      - rabbitmq
+
   users-service:
     container_name: users-service
     build:
@@ -11,6 +24,7 @@ services:
       - ./users-service/.env
     depends_on:
       - eureka-server
+      - rabbitmq
       - users-postgres
 
   users-postgres:
@@ -33,6 +47,7 @@ services:
       - ./accreditations-service/.env
     depends_on:
       - eureka-server
+      - rabbitmq
       - accreditations-postgres
 
   accreditations-postgres:
@@ -83,3 +98,12 @@ services:
       - .env
     depends_on:
       - eureka-server
+
+  rabbitmq:
+    image: rabbitmq:management-alpine
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    env_file:
+      - .env
