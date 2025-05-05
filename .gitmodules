@@ -18,3 +18,7 @@
 	path = users-service
 	url = https://github.com/nekusu/java-challenge-2025-users-service
 	branch = main
+[submodule "email-service"]
+	path = email-service
+	url = https://github.com/nekusu/java-challenge-2025-email-service
+	branch = main
