@@ -15,6 +15,9 @@ A microservices-based Java project for managing sale points and accreditations, 
 - **Mockito**
 - **Lombok**
 - **PostgreSQL**
+- **RabbitMQ**
+- **Java Mail**
+- **OpenPDF**
 - **Podman & Podman Compose**
 
 ## Project Architecture
@@ -23,44 +26,16 @@ This project follows a microservices architecture, with the following main compo
 
 - **Eureka Server**: Service registry for microservices.
 - **API Gateway**: Entry point for all client requests, routing to appropriate services.
+- **RabbitMQ**: Message broker for asynchronous communication between services.
 - **Users Service**: Manages user authentication and authorization, including JWT token generation and validation.
 - **Accreditations Service**: Handles accreditations data and logic.
 - **Sale Points Service**: Manages sale points data and logic.
+- **Email Service**: Sends emails asynchronously using RabbitMQ.
 - **PostgreSQL Databases**: Each service has its own isolated database.
 
-```mermaid
-flowchart LR
- subgraph EurekaServer["Eureka Server"]
-        ApiGateway{{"API Gateway"}}
-        UsersService["Users Service"]
-        AccreditationsService["Accreditations Service"]
-        SalePointsService["Sale Points Service"]
-  end
-  subgraph UsersService["Users Service"]
-        direction TB
-        AuthController("Auth Controller")
-        UserController("User Controller")
-        UsersDatabase[("Database")]
-  end
- subgraph AccreditationsService["Accreditations Service"]
-        direction LR
-        AccreditationsController("Controller")
-        AccreditationsDatabase[("Database")]
-  end
- subgraph SalePointsService["Sale Points Service"]
-        direction TB
-        SalePointController("Sale Point Controller")
-        PathController("Path Controller")
-        SalePointsDatabase[("Database")]
-  end
-    Client((Client)) --> ApiGateway
-    UserController --> UsersDatabase
-    AuthController --> UsersDatabase
-    AccreditationsController --> AccreditationsDatabase
-    SalePointController --> SalePointsDatabase
-    PathController --> SalePointsDatabase
-    ApiGateway --> UsersService & AccreditationsService & SalePointsService
-```
+[![](/mermaid-diagrams/project-architecture.png)](https://mermaid.live/edit#pako:eNqdVU2P2jAQ_SvWHKqtRBBk2WzIoRLtVlUPK9Fue-l6DyYxYBFs5DjdUsR_79ghCeZrUXOaGb_5eJ5nZQOpyjgkEAQBlamSUzFLqCQkZ2tVmoTwfEGlO5zm6jWdM23Ij4-IKMrJTLPVnPwsuC6euP4tUv5Mwblk51N4scUIyYTmqRFKVsm7b1Sa-ScljVZ5zvUNBRsgbYTC-xZsC3tgG7gELh6YYRNW8GcE1zaiXg5gY62yMnUla3NXi8tsn-koTTXPhGGWyB5lP34tdy_JI3aGk5_xNjkffzXLJ5bzsRLS7DG0MVIFr6TXVPGYtXXOLW7MDiRhA-fA7aiXbuOA3-clE3lLzblXknJYnKUol_WinOldpMWVmi-Yrcm1beFcUvnYggTBBzJaiS_M8Fe2tgoafyU7z56_8x4VuieVh_GjXWFsn181jv9yXHfvfVQo_zEeo-qpGvXISzKuOJ5U7BEfv-IJ5bhix8uu8L5iLkK9-R3yO5tMhHn8hjuozUYDp4f00ipg7bkjTyO7Qs2q21v9j91SCR2YaZFBYnTJO4ANsBm6sLGNKJg5X6KGEzQzphcUqNxizorJX0ot6zStytkckinLC_TKVYazPQiGr2PZRDVq2YqmlAaS_q2rAckG_qAXxt24P4iGg_59eBvH_agDa0gGUTccDIdhFOJJ2LvrRdsO_HVte934_q639_U7YBkr_Vj9fNw_aPsP-ioxyw)
+
+_Click the image to view the diagram code (not included in the README because [GitHub does not support elk layout rendering](https://github.com/orgs/community/discussions/138426))._
 
 ## Database Relationships
 
@@ -111,6 +86,59 @@ erDiagram
     sale_points ||--o{ paths : "id to id_a"
     sale_points ||--o{ paths : "id to id_b"
 
+```
+
+## Application Workflow
+
+The following sequence diagram illustrates the end-to-end flow of key user actions in the system: registration, login, and accreditation creation. It shows how the client interacts with the API Gateway, which routes requests to the appropriate microservices.
+
+Asynchronous messaging is used for sending emails, so the main application flow is not blocked while notifications are delivered.
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant APIGateway
+    participant UsersService
+    participant AccreditationsService
+    participant SalePointsService
+    participant RabbitMQ
+    participant EmailService
+
+    %% Registration
+    Client->>APIGateway: POST /api/auth/register (NewUser)
+    APIGateway->>UsersService: POST /api/auth/register (NewUser)
+    UsersService->>UsersService: Validate & create user
+    UsersService->>RabbitMQ: Send user.registration message
+    Note right of RabbitMQ: (Async) Message queued
+    UsersService-->>APIGateway: 201 Created (UserDTO)
+    APIGateway-->>Client: 201 Created (UserDTO)
+    EmailService-->>RabbitMQ: Consume user.registration message
+    EmailService->>EmailService: Compose & send welcome email
+    EmailService-->>Client: (Email sent)
+
+    %% Login
+    Client->>APIGateway: POST /api/auth/login (LoginUser)
+    APIGateway->>UsersService: POST /api/auth/login (LoginUser)
+    UsersService->>UsersService: Authenticate user
+    UsersService-->>APIGateway: 200 OK (JWT Token)
+    APIGateway-->>Client: 200 OK (JWT Token)
+
+    %% Create Accreditation
+    Client->>APIGateway: POST /api/accreditations (JWT, NewAccreditation)
+    APIGateway->>AccreditationsService: POST /api/accreditations (JWT, NewAccreditation)
+    AccreditationsService->>UsersService: GET /api/users/self (JWT)
+    UsersService-->>AccreditationsService: 200 OK (UserDTO)
+    AccreditationsService->>SalePointsService: GET /api/sale-points/{id}
+    SalePointsService-->>AccreditationsService: 200 OK (SalePointDTO)
+    AccreditationsService->>AccreditationsService: Create accreditation
+    AccreditationsService->>AccreditationsService: Generate PDF
+    AccreditationsService->>RabbitMQ: Send accreditation.confirmation message with PDF
+    Note right of RabbitMQ: (Async) Message queued
+    AccreditationsService-->>APIGateway: 201 Created (AccreditationDTO)
+    APIGateway-->>Client: 201 Created (AccreditationDTO)
+    EmailService-->>RabbitMQ: Consume accreditation.confirmation message
+    EmailService->>EmailService: Compose & send accreditation email
+    EmailService-->>Client: (Email sent)
 ```
 
 ## Dijkstra Algorithm Flowchart
@@ -194,12 +222,11 @@ or, if using Podman:
 podman compose up
 ```
 
-This will start all services:
-- Eureka Server ([`http://localhost:8761`](http://localhost:8761))
+This will start the services:
 - API Gateway ([`http://localhost:8080`](http://localhost:8080))
-- Users Service ([`http://localhost:8092`](http://localhost:8092))
-- Accreditations Service ([`http://localhost:8091`](http://localhost:8091))
-- Sale Points Service ([`http://localhost:8090`](http://localhost:8090))
+- RabbitMQ Management Console ([`http://localhost:15672`](http://localhost:15672))
+  - Username: `user`
+  - Password: `password`
 - PostgreSQL databases:
   - Users Database ([`http://localhost:5434`](http://localhost:5434))
   - Accreditations Database ([`http://localhost:5433`](http://localhost:5433))
