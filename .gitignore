@@ -3,3 +3,6 @@
 
 ### Env Files ###
 .env
+
+### SonarQube ###
+sonar-cnes-report-*.jar
