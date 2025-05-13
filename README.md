@@ -13,12 +13,14 @@ A microservices-based Java project for managing sale points and accreditations, 
 - **SpringDoc OpenAPI** (with Swagger UI)
 - **JUnit**
 - **Mockito**
+- **JaCoCo**
 - **Lombok**
 - **PostgreSQL**
 - **RabbitMQ**
 - **Java Mail**
 - **OpenPDF**
 - **Podman & Podman Compose**
+- **SonarQube**
 
 ## Project Architecture
 
@@ -209,6 +211,12 @@ In the root `.env` file, set the `JWT_SECRET` variable to a secure, random base6
 openssl rand -base64 32
 ```
 
+or, if you use PowerShell:
+
+```powershell
+[Convert]::ToBase64String((1..32 | ForEach-Object { Get-Random -Maximum 256 }))
+```
+
 Replace the value of `JWT_SECRET` in `.env` with the generated string.
 
 ### 3. Build and Run with Docker Compose
@@ -242,7 +250,7 @@ Once all services are running, you can access the main Swagger UI at:
 
 - [`http://localhost:8080/swagger-ui.html`](http://localhost:8080/swagger-ui.html)
 
-From this page, you can navigate to the Swagger documentation for each service (Users, Accreditations, and Sale Points) through the provided dropdown or links. This allows you to explore and try out all available endpoints directly from your browser.
+From this page, you can navigate to the Swagger documentation for each service (Users, Accreditations, and Sale Points) through the provided dropdown or links.
 
 ### Importing OpenAPI Specs
 
@@ -273,3 +281,7 @@ A default admin user is created automatically when the Users Service starts:
 - **Password:** `admin`
 
 You can use these credentials to log in and obtain an admin JWT token for testing protected endpoints.
+
+## SonarQube reports
+
+SonarQube reports are generated for each service and can be found in the [`sonarqube-reports`](/sonarqube-reports/) directory.
